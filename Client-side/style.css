@@ -1,0 +1,19 @@
+body {
+    background-color: lightblue;
+}
+head {
+    width: 100%;
+    padding: 0px;
+    margin: 0px;
+}
+
+nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: right;
+    min-height: 10vh;
+    background-color: aqua;
+    margin-left: -5%;
+    margin-right: -5%;
+    border: solid black 1px;
+}
