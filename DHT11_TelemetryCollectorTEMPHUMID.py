@@ -15,7 +15,7 @@ import csv
 ##### METHODS #####
 # Method to write sensor data to CSV file
 def AppendToCSV(DataToWrite):
-    with open('./THreadings2.csv', 'a') as csvfile:
+    with open('./TESTreadings.csv', 'a') as csvfile:
         CSVWriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_NONE)
         CSVWriter.writerow(DataToWrite)
         print("Appended new row to CSV File: {}".format(DataToWrite))
@@ -35,9 +35,9 @@ if __name__ == "__main__":
             Timestamp = datetime.now().replace(microsecond=0)
             Temperature = DHT11Sensor.temperature
             Humidity = DHT11Sensor.humidity
-            TempHumidArray = [Temperature, Humidity]
+            TimestampTempHumidArray = [Timestamp, Temperature, Humidity]
             print("{} > Temperature: {}*C,  Humidity: {}% ".format(Timestamp, Temperature, Humidity))
-            AppendToCSV(TempHumidArray)
+            AppendToCSV(TimestampTempHumidArray)
         except RuntimeError as error:
             print(error.args[0])
             time.sleep(2.0)
