@@ -1,32 +1,28 @@
+#####General imports#####
 import csv 
 from datetime import datetime, timedelta
 import threading
-
-#Telemetry Collector imports
 import time
+
+#####Telemetry Collector imports#####
 import board
 import adafruit_dht
 import psutil
-from datetime import datetime
-import csv
 
-
-#OneClassSVM imports
-from multiprocessing.sharedctypes import Value
+#####OneClassSVM imports#####
 from sklearn.svm import OneClassSVM
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager
-import csv
-import os
 
-# import numpy as np
-# #import matplotlib.pyplot as plt
-# #import matplotlib.font_manager
+
+
+
+#####Global vairables#####
 
 # ArrayOfTrainingData = [[-1000],[24],[25],[26],[27],[28],[29],[30],[1000]]
 
-
+ArrayOfOriginalTrainingData = []
 ArrayOfTrainingData = []
 
 # ArrayOfTestData = [[24],[25],[26],[27],[28]]
@@ -34,7 +30,14 @@ ArrayOfTrainingData = []
 # ArrayOfOutlierData = [[100],[-1],[26],[-30],[24],[28]]
 
 
+
+#####METHODS#####
+
 def GetDataFromCSV():
+    '''Method that fetches and processes all raw data stored in the CSV file'''
+    ArrayOfOriginalTrainingData.clear()
+    ArrayOfTrainingData.clear()
+
     CurrentTime = datetime.now().replace(microsecond=0)
     # print(CurrentTime)
     GetFromTime = CurrentTime - timedelta(days = 1)
@@ -50,35 +53,91 @@ def GetDataFromCSV():
             # print(row[0])
             # print(row[1])
             # print(row[2])
+
             DataTimeStamp = (datetime.fromisoformat(row[0]))
             if (DataTimeStamp >= GetFromTime):
+
                 NewRow = []
                 NewRow.append(int(row[1]))
                 NewRow.append(int(row[2]))
+
+                RawRow = []
+                RawRow.append(str(row[0]))
+                RawRow.append(int(row[1]))
+                RawRow.append(int(row[2]))
                 # print(row)
                 ArrayOfTrainingData.append(NewRow)
+                ArrayOfOriginalTrainingData.append(RawRow)
 
 
-def PrintOutcomes(InputDataSet, OutputDataSet):
+def StoreOutcomes(InputDataSet, OutputDataSet):
+    '''Method used to store/export all abnormal data entries to CSV file format (used to display processed data on webpage'''
+    #Clear file contents
+    file = open('/var/www/html/data/Anomalies.csv',"r+")
+    file.truncate(0)
+    file.close()
+
+    file = open('/var/www/html/data/RecentAnomalies.csv',"r+")
+    file.truncate(0)
+    file.close()
+
+    #Add new contents
     ArrayOfMappedOutcomes = []
     if (len(InputDataSet) == len(InputDataSet)):
+        CurrentTime = datetime.now().replace(microsecond=0)
+
         Count = 0
         for i in InputDataSet:
-            InputValue0 = int(InputDataSet[Count][0])
+            # print(i)  # debug
+            InputValue0 = str(InputDataSet[Count][0])
             InputValue1 = int(InputDataSet[Count][1])
+            InputValue2 = int(InputDataSet[Count][2])
             OutputValue = int(OutputDataSet[Count])
-            if (OutputValue == -1):
-                Prediction = "Abnormal"
-            elif (OutputValue == 1):
-                Prediction = "Normal"
-            StringToAppend = ("Value: {},{} is {} (SVMOutput: {})".format(InputValue0,InputValue1,Prediction,OutputValue))
-            # print(StringToAppend)
-            ArrayOfMappedOutcomes.append(StringToAppend)
+
+            DataTimeStamp = (datetime.fromisoformat(InputValue0))
+            GetFromTime = CurrentTime - timedelta(days = 1)
+
+            #Get anomalies in last 24 hours
+            if (DataTimeStamp >= GetFromTime):
+                if (OutputValue == -1):
+                    Prediction = "Abnormal"
+                    StringToAppend = ("Timestamp: {}, values: {}*C, {}%".format(InputValue0,InputValue1,InputValue2))
+                    with open('/var/www/html/data/Anomalies.csv', 'a') as anomaliescsvfile:
+                        AnomaliesCSVWriter = csv.writer(anomaliescsvfile, delimiter='.', quoting=csv.QUOTE_NONE)
+                        AnomaliesCSVWriter.writerow([StringToAppend])
+                elif (OutputValue == 1):
+                    Prediction = "Normal"
             Count = Count + 1
+
+
+        Count = (len(InputDataSet) - 1)
+        for i in reversed(InputDataSet):
+            # print(i)  # debug
+            InputValue0 = str(InputDataSet[Count][0])
+            InputValue1 = int(InputDataSet[Count][1])
+            InputValue2 = int(InputDataSet[Count][2])
+            OutputValue = int(OutputDataSet[Count])
+
+            DataTimeStamp = (datetime.fromisoformat(InputValue0))
+            GetFromTimeRecent = CurrentTime - timedelta(minutes = 30)
+
+            #Get recent anomalies in last 30 mins
+            if (DataTimeStamp >= GetFromTimeRecent):
+                if (OutputValue == -1):
+                    Prediction = "Abnormal"
+                    StringToAppend = ("Timestamp: {}, values: {}*C, {}%".format(InputValue0,InputValue1,InputValue2))
+                    with open('/var/www/html/data/RecentAnomalies.csv', 'a') as anomaliescsvfile:
+                        AnomaliesCSVWriter = csv.writer(anomaliescsvfile, delimiter='.', quoting=csv.QUOTE_NONE)
+                        AnomaliesCSVWriter.writerow([StringToAppend])
+                elif (OutputValue == 1):
+                    Prediction = "Normal"
+            Count = Count - 1
+
         return ArrayOfMappedOutcomes
 
 
 def GetPlotBoundaries(InputDataSet):
+    '''Method to calculate plot boundaries, used for creating graphs of SVM Output'''
     MinTemp, MaxTemp, MinHumid, MaxHumid = 101, -100, 101, -100
     for Entries in InputDataSet:
         if (Entries[0] < MinTemp):
@@ -98,8 +157,8 @@ def GetPlotBoundaries(InputDataSet):
     return ArrayofBoundaries
 
 
-
 def PerformAnalysis():
+    '''Method used to perform One Class SVM Machine Learning Algorithm analysis of data, and plot the outcome to a matplotlib graph'''
     GetDataFromCSV()
     print('----------STATUS: DONE GETTING DATA FROM CSV!----------')
 
@@ -121,7 +180,9 @@ def PerformAnalysis():
     # for i in TrainingPrediction:
     #     print(i)
 
-    #PrintOutcomes(ArrayOfTrainingData, TrainingPrediction)
+    # PrintOutcomes(ArrayOfTrainingData, TrainingPrediction)
+    StoreOutcomes(ArrayOfOriginalTrainingData, TrainingPrediction)
+    print('OUTCOMES SUCCESSFULLY STORED!')
     # print(TestPrediction)
     # print(OutlierPrediction)
     # print(TestScores)
@@ -153,7 +214,7 @@ def PerformAnalysis():
     Z = Z.reshape(xx.shape)
     # print(Z) # Debug
 
-    plt.title("Data Anomaly Detection Plot")
+    plt.title("Novelty Detection")
     plt.contourf(xx, yy, Z, levels=np.linspace(Z.min(), 0, 7), cmap=plt.cm.PuBu)
     a = plt.contour(xx, yy, Z, levels=[0], linewidths=2, colors="darkred")
     plt.contourf(xx, yy, Z, levels=[0, Z.max()], colors="palevioletred")
@@ -185,16 +246,17 @@ def PerformAnalysis():
     )
 
     CurrentTime = datetime.now().replace(second=0, microsecond=0)
-    plt.savefig(fname='/var/www/html/pages/Test') #Save most recent result to webserver
+    plt.savefig(fname='/var/www/html/pages/CurrentDataGraph') #Save most recent result to webserver
     plt.savefig(fname=(f'/var/www/html/images/data_graph_archive/{CurrentTime}')) #Save copy of most recent result to archive with stamp
-    plt.savefig(fname='Test') #Save most recent result here as debug
-    plt.show()
+    plt.savefig(fname='Current') #Save most recent result here as debug
+    # plt.show()
 
+    plt.close('all') #Close figures to prevent new ones failing
 
 
 ##### Telemetry Collection METHODS #####
-# Method to write sensor data to CSV file
 def AppendToCSV(DataToWrite):
+    '''Method to append given DataToWrite Paramater to CSV file. Used for logging raw telemetry data'''
     with open('./TESTreadings.csv', 'a') as csvfile:
         CSVWriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_NONE)
         CSVWriter.writerow(DataToWrite)
@@ -202,42 +264,14 @@ def AppendToCSV(DataToWrite):
         
 
 
-def CollectTelemetry():
-    # First check if libgpiod process is running. If so terminate running instance.
-    for process in psutil.process_iter():
-        if (process.name() == 'libgpiod_pulsein' or process.name() == 'libgpiod_pulsei'):
-            process.kill()
-
-    DHT11Sensor = adafruit_dht.DHT11(4)
-    while True:
-        try:
-            Timestamp = datetime.now().replace(microsecond=0)
-            Temperature = DHT11Sensor.temperature
-            Humidity = DHT11Sensor.humidity
-            TimestampTempHumidArray = [Timestamp, Temperature, Humidity]
-            # print("{} > Temperature: {}*C,  Humidity: {}% ".format(Timestamp, Temperature, Humidity)) #Uncomment for debug
-            AppendToCSV(TimestampTempHumidArray)
-        except RuntimeError as error:
-            print(error.args[0])
-            time.sleep(2.0)
-            continue
-        except Exception as error:
-            DHT11Sensor.exit()
-            raise error
-        
-        # Sleep for two seconds before taking next measurement
-        time.sleep(2.0)
-
-
-
 ##### MAIN METHOD #####
 if __name__ == "__main__":
 
-    AnomalousDataSmple1 = [(datetime(2022, 5, 10, 22, 11, 2)), int(100), int(100)]
+    AnomalousDataSmple1 = [(datetime(2022, 5, 13, 10, 5, 0)), int(34), int(50)]
     AppendToCSV(AnomalousDataSmple1)
-    AnomalousDataSmple1 = [(datetime(2022, 5, 10, 22, 11, 2)), int(105), int(105)]
+    AnomalousDataSmple1 = [(datetime(2022, 5, 13, 10, 5, 0)), int(35), int(51)]
     AppendToCSV(AnomalousDataSmple1)
-    AnomalousDataSmple1 = [(datetime(2022, 5, 10, 22, 11, 2)), int(-50), int(-50)]
+    AnomalousDataSmple1 = [(datetime(2022, 5, 13, 10, 5, 0)), int(24), int(44)]
     AppendToCSV(AnomalousDataSmple1)
 
     print("----------PERFORMING ANALYSIS----------")

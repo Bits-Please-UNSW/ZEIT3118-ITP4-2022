@@ -1,0 +1,10 @@
+csv 
+datetime
+threading
+time
+board
+adafruit_dht
+psutil
+sklearn
+numpy
+matplotlib
