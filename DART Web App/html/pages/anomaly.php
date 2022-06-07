@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-    
     <head>
         <link rel="stylesheet" href="../style.css">
         <script src="../main.js"></script>
@@ -11,9 +10,10 @@
                 <a class="logo-link" href="../index.php"><img class="logo-img"></a>
             </div>
             <div class="heading">
-                <h1 class="site-title">DART: Data Anomaly Recognition Tool</h4>
+                <h1 class="site-title">DART: Data Anomaly Recognition Tool</h1>
             </div>
             <div class="nav">
+                <a href="raw-data.php" class="nav-buttons">Raw Data</a>
                 <a href="data.php" class="nav-buttons">Data Plots</a>
                 <a href="anomaly.php" class="nav-buttons">Logged Anomalies</a>
             </div>
@@ -21,7 +21,7 @@
         <!--Site Content-->
         <div class="container">
         <h2>All Anomalies (Last 24h):</h2>
-            <p> Anomalies detected in the last 48 rounds of training for the Machine Learning model</p>
+            <p> Anomalies detected in the last 24 hours of data collection are:</p>
             <?php 
                 $path = "../data/Anomalies.csv";
                 $anomalies = fopen($path,"r");
@@ -37,11 +37,15 @@
             <p> Anomalies detected in the last round of training for the Machine Learning model</p>
             <?php 
                 $path = "../data/RecentAnomalies.csv";
-                $anomalies = fopen($path,"r");
-                while (! feof($anomalies)) {
-                    echo fgets($anomalies) . "<br>";
+                if(0 == filesize( $path)){
+                    echo "No recent anomalies";
+                }else{
+                    $anomalies = fopen($path,"r");
+                    while (! feof($anomalies)) {
+                        echo fgets($anomalies) . "<br>";
+                    }
+                    fclose($anomalies);
                 }
-                fclose($anomalies);
             ?>
         </div>
     </body>

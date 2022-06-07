@@ -1,10 +1,5 @@
-csv 
-datetime
-threading
-time
-board
-adafruit_dht
-psutil
-sklearn
-numpy
-matplotlib
+mysql-connector-python==8.0.29
+numpy==1.22.3
+adafruit-circuitpython-dht==3.7.1
+scikit-learn==1.0.2
+matplotlib==3.5.1
